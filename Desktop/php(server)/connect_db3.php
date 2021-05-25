@@ -1,16 +1,17 @@
 <?php
 $json = file_get_contents('php://input');
 $string = json_decode($json);
-$getNum = $string->num;
 $uuid = $string->uuid;
-$num = file_get_contents('./pnum.txt');
-if(!$num){
-    file_put_contents('./pnum.txt', "0");
-    $num = file_get_contents('./pnum.txt');
-}
-$num = ++$num;
-file_put_contents('./pnum.txt');
 $data;
+if(!file_exists('./pnum.txt')){
+    file_put_contents('./pnum.txt', "0");
+    error_log(file_get_contents('./pnum.txt'));
+}
+$num = file_get_contents('./pnum.txt');
+$num = $num + 1;
+error_log($num);
+file_put_contents('./pnum.txt', $num);
+
 
 try{
 $url = parse_url(getenv('DATABASE_URL'));
@@ -33,10 +34,10 @@ echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT | JSON_UNESCA
 
 }catch (PDOException $e){
     print('Error:'.$e->getMessage());
+    error_log('error');
     die();
 }
 
 $pdo = null;
 
 ?>
-
