@@ -13,7 +13,7 @@ $num = file_get_contents('./pnum.txt');
 $num = $num + 1;
 error_log($num);
 file_put_contents('./pnum.txt', $num);
-$time_state = microtime(true) - $time_start;
+$time_state = microtime(true);
 
 
 try{
@@ -32,9 +32,9 @@ $data = $result['url2'];
 }else if(10 < $num){
 $data = $result['url3'];
 }
-$time_finish = microtime(true) - $time_state;
-error_log($time_state);
-error_log($time_finish);
+$time_finish = microtime(true);
+error_log($time_state - $time_start);
+error_log($time_finish - $time_state);
     
 echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
 
