@@ -5,8 +5,8 @@ $num = $string->num;
 $uuid = $string->uuid;
 $data;
 $time_start = microtime(true);
-if(!file_exists('./pnum.txt')){
-    file_put_contents('./pnum.txt', "0");
+if(!file_exists('./num.txt')){
+    file_put_contents('./num.txt', "0");
     error_log(file_get_contents('./pnum.txt'));
 }
 $num = file_get_contents('./pnum.txt');
