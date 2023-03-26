@@ -1,0 +1,117 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" />
+    <script src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
+    <script src="https://unpkg.com/obniz@3.x/obniz.js" crossorigin="anonymous" ></script>
+  </head>
+  <body>
+    <div id="obniz-debug"></div>
+    <script>
+      var obniz_cen = new Obniz("0324-1880");
+      var obniz_per = new Obniz("8195-7184");
+
+      var target = {
+        localName: ["congestion beacon1", "congestion beacon2"]
+      };
+
+      const current_congestion = Array(target.localName.length);
+      const sleep = msec => new Promise(resolve => setTimeout(resolve, msec*1000));
+
+      for(var a = 0; a < target.localName.length; a++){
+        current_congestion[a] = Array(4);
+        current_congestion[a][0] = target.localName[a];
+        current_congestion[a][1] = 0;
+        current_congestion[a][2] = 0;
+        current_congestion[a][3] = 0;
+      }
+
+      function toHex(v) {
+        return '0x' + (('0000' + v.toString(16)).slice(-2));
+      }
+
+      obniz_cen.onconnect = async function() {
+        await obniz_cen.ble.initWait();
+        
+        var service_average = new obniz_cen.ble.service({"uuid" : "eb8d87c5-b232-6c71-8253-a9a345898172"});
+        var ad_ave = Array(target.localName.length);
+        var characteristic_average = new obniz_cen.ble.characteristic({
+          "uuid" : "b6cb24cb-5704-6061-2e79-cff1335aa799", 
+          "properties" : ["read", "write", "notify"], 
+          "data" : ad_ave
+          });
+        service_average.addCharacteristic(characteristic_average);
+        obniz_cen.ble.peripheral.addService(service_average);
+
+        obniz_cen.onloop = async function () {
+          for(var j = 0;j < current_congestion.length;j++){
+              ad_ave[j] = Math.round(current_congestion[j][3]);
+            }
+
+            var ad = [toHex(target.localName.length+1), "0xff"];
+            for(var j = 0;j < current_congestion.length;j++){
+              ad.push(toHex(current_congestion[j][1]));
+            }
+            console.log(ad_ave);
+
+            obniz_cen.ble.advertisement.setAdvData(service_average.advData);
+            obniz_cen.ble.advertisement.setAdvDataRaw(ad);
+            obniz_cen.ble.advertisement.setScanRespData({
+              localName : "congestion central",
+            });
+            console.log("advertise start");
+            obniz_cen.ble.advertisement.start();
+            await sleep(10);
+            console.log("advertise end");
+            obniz_cen.ble.advertisement.end();
+        }
+      };
+
+      obniz_per.onconnect = async function(){
+        await obniz_per.ble.initWait();
+        var peripheral_name = "congestion beacon1";
+
+        const array = [];
+
+        var target1 = {
+          localName: "Pixel 3 XL"
+        };
+
+        var setting = {
+          duration : 10
+        };
+
+        obniz_per.ble.scan.onfind = async function(peripheral){
+          console.log(peripheral.localName);
+          console.log(peripheral.address);
+          array.push(peripheral.address);
+          flag = false;
+        };
+
+        obniz_per.ble.scan.onfinish = async function(peripherals, error){
+          var sum = Array.from(new Set(array));
+          for(var i = 0;i < current_congestion.length;i++){
+            if(current_congestion[i][0] == peripheral_name){
+              current_congestion[i][1] = sum.length;
+              current_congestion[i][2]++;
+              if(current_congestion[i][2] == 1){
+                current_congestion[i][3] = sum.length;
+              }else{
+                current_congestion[i][3] = (current_congestion[i][3]*(current_congestion[i][2]-1) + sum.length)/current_congestion[i][2];
+              }
+            }
+          }
+          console.log(current_congestion);
+          console.log("wait 50 minutes");
+          await sleep(5); //5秒間休止する
+          console.log("scan restart");
+          array.splice(0);
+          await obniz_per.ble.scan.startWait(null, setting);
+        };
+
+        await obniz_per.ble.scan.startWait(null, setting);
+      }
+    </script>
+  </body>
+</html>

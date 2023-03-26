@@ -1,0 +1,116 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" />
+    <script src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
+    <script src="https://unpkg.com/obniz@3.x/obniz.js" crossorigin="anonymous" ></script>
+  </head>
+  <body>
+    <div id="obniz-debug"></div>
+    <div id = "state"/>
+    <script>
+      var obniz = new Obniz("OBNIZ_ID_HERE");
+      const target = [
+        ["target1", "1"],
+        ["target2", "2"],
+        ["target3", "3"],
+        ["target4", "4"],
+        ["target5", "5"],
+        ["target6", "6"],
+        ["target7", "7"],
+        ["target8", "8"]
+      ];
+      var sum = 0;
+      var sum_man = 0;
+      var sum_lady = 0;
+      var sex_flag = 0;
+
+      // called on online
+      obniz.onconnect = async function() {
+        function toHex(v) {
+          return '0x' + (('0000' + v.toString(16)).slice(-2));
+        }
+
+        await obniz.ble.initWait();
+
+        var result = Array(4);
+        var service_read = new obniz.ble.service({ uuid : "add4a421-efc4-c246-148f-ef3ed1912788" });
+        var characteristic_read = new obniz.ble.characteristic({ 
+          uuid : "58786812-4482-3cec-491b-d8f222aeff0f", 
+          properties : ["read"],
+          data : result
+        });
+        service_read.addCharacteristic(characteristic_read);
+        obniz.ble.peripheral.addService(service_read);
+
+        var service_write = new obniz.ble.service({uuid : "d5192853-4b0e-be4b-8a0e-097f6ccf591c"});
+        var characteristic_write = new obniz.ble.characteristic({
+          uuid : "8b96ac1f-d22b-fd20-a16c-53d510d46d6e",
+          properties : ["write"]
+        })
+        service_write.addCharacteristic(characteristic_write);
+        obniz.ble.peripheral.addService(service_write);
+
+        obniz.ble.peripheral.onconnectionupdates = function(data){
+          console.log("remote device ", data.address, data.status);
+          var area1 = document.getElementById("state");
+          area1.innerHTML = data.status;
+        };
+
+        characteristic_write.onwritefromremote = function(address, newvalue){
+          for(let i = 0;i < newvalue.length;i++){
+            switch(String.fromCharCode(newvalue[i])){
+              case "a":
+                i++;
+                let l = parseInt(String.fromCharCode(newvalue[i]), 10);
+                var user_log = [];
+                var remain_target = [];
+                for(let j = i+1;j < i+l+1;j++){
+                  user_log.push(String.fromCharCode(newvalue[j]));
+                }
+                console.log(user_log);
+                for(let n = 0;n < target.length;n++){
+                  if(!user_log.includes(target[n][1])){
+                    remain_target.push(target[n][1]);
+                  }
+                }
+                console.log(remain_target);
+                i += l+1;
+              
+              case "b":
+                i++;
+                sum++;
+                if(String.fromCharCode(newvalue[i]) == "1"){
+                  sum_man++;
+                  sex_flag = 1;
+                }else if(String.fromCharCode(newvalue[i]) == "2"){
+                  sum_lady++;
+                  sex_flag = 2;
+                }
+                i++;
+                break;
+            }
+          }
+          
+          if(remain_target.length < 1){
+            result[0] = "0x00";
+          }else{
+            result[0] = toHex(remain_target[0]);
+          }
+          result[1] = toHex(sum);
+          result[2] = toHex(sum_man);
+          result[3] = toHex(sum_lady);
+          console.log(result)
+        }
+
+        obniz.ble.advertisement.setAdvData(service_read.advData);
+        obniz.ble.advertisement.setAdvData(service_write.advData);
+        obniz.ble.advertisement.setScanRespData({
+          localName : "obniz BLE",
+        });
+        obniz.ble.advertisement.start();
+      };
+    </script>
+  </body>
+</html>

@@ -1,0 +1,52 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" />
+    <script src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
+    <script src="https://unpkg.com/obniz@3.x/obniz.js" crossorigin="anonymous" ></script>
+  </head>
+  <body>
+    <div id="edit_area"></div>
+    <script>
+      var obniz = new Obniz("OBNIZ_ID_HERE");
+      obniz.onconnect = async function () {
+        await obniz.ble.initWait();
+        var i = 0;
+        var array = [];
+
+        var target = {
+          localName: "obniz BLE"
+        };
+
+        var setting = {
+          duration: 60
+        }
+
+        obniz.ble.scan.onfind = async function(peripheral){
+          var endTime = performance.now();
+          array.push(endTime - startTime);
+          console.log("start:" + startTime);
+          console.log("end:" + endTime);
+          console.log("system time" + (endTime - startTime));
+          i++;
+          await obniz.ble.scan.endWait();
+        };
+
+        obniz.ble.scan.onfinish = async function(peripherals, error){
+          if(i < 100){
+            console.log("scan restart");
+            await obniz.ble.scan.startWait(target, setting);
+            startTime = performance.now();
+          }else{
+            console.log(array);
+          }
+        };
+
+        console.log("scan start");
+        await obniz.ble.scan.startWait(target, setting);
+        var startTime = performance.now();
+      }
+    </script>
+  </body>
+</html>
